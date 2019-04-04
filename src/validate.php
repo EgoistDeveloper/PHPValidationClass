@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Extented Validation Class
  * Supports PHP 5 >= 5.1.0 && PHP 7.x.x
@@ -24,17 +23,35 @@
  * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH 
  * THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * 
- * @category   Database
- * @package    PDODatabaseClass
- * @author     Original Author <iam@egoist.dev>
+ * @category   Validation
+ * @package    PHPValidationClass
+ * @author     Original Author <hiam@egoist.dev>
  * @copyright  2018 EgoistDeveloper
  * @license    MIT
- * @version    0.1
+ * @version    0.2
  * @link       https://github.com/EgoistDeveloper/PHPValidationClass
  */
 
-class Validate extends Lang
+class Validate
 {
+    public $lang = null;
+    public $errors = [];
+    public $data = [];
+    public $key = null;
+    public $value = null;
+
+    public $dataExists = true;
+    public $keyExists = true;
+
+    public $patterns = [
+        'url' => '/^(http|https)?:\/\/[a-zA-Z0-9-\.]+\.[a-z]{2,4}/',
+        'date_dmy' => '/[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{4}/',
+        'date_ymd' => '/[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}/',
+        'rgba' => '/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3}),? ?(\d{1,3}),? ?$/',
+        'rgb' => '/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3})$/',
+        'hex_color' => '/^#?([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})?$/'
+    ];
+
     /**
      * Email validation with native function
      *
@@ -43,7 +60,9 @@ class Validate extends Lang
      */
     public function isEmail($email)
     {
-        return filter_var($email, FILTER_VALIDATE_EMAIL);
+        $this->errors = filter_var($email, FILTER_VALIDATE_EMAIL); // ###
+
+        return $this;
     }
 
     /**
@@ -55,7 +74,11 @@ class Validate extends Lang
      */
     public function isId($id, $idMaxLength = 11)
     {
-        return preg_match("/^[0-9]{1,{$idMaxLength}}$/", $id);
+        if (!preg_match("/^[0-9]{1,{$idMaxLength}}$/", $id)){
+            array_push($this->errors, "{$this->lang->bg_invalid_id_value} {$id}");
+        }
+
+        return $this;
     }
 
     /**
@@ -96,7 +119,7 @@ class Validate extends Lang
     public function isUrl($url, $urlPattern = null)
     {
         if ($urlPattern){
-            return preg_match('/^(http|https)?:\/\/[a-zA-Z0-9-\.]+\.[a-z]{2,4}/', $url);
+            return preg_match($this->patterns['url'], $url);
         }
 
         return filter_var($url, FILTER_VALIDATE_URL);
@@ -130,7 +153,12 @@ class Validate extends Lang
         }
 
         json_decode($json);
-        return json_last_error() === JSON_ERROR_NONE ? true : false;
+        
+        if ($this->value && json_last_error() != JSON_ERROR_NONE){
+            array_push($this->errors, "{$this->lang->bg_invalid_json_string} {$this->key}");
+        }
+
+        return $this;
     }
 
     /**
@@ -141,7 +169,7 @@ class Validate extends Lang
      */
     public function isHexColor($color)
     {
-        return preg_match('/^#?([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})?$/', $color);
+        return preg_match($this->patterns['hex_color'], $color);
     }
 
     /**
@@ -152,7 +180,7 @@ class Validate extends Lang
      */
     public function isRgbColor($color)
     {
-        return preg_match('/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3})$/', $color);
+        return preg_match($this->patterns['rgb'], $color);
     }
 
     /**
@@ -163,9 +191,38 @@ class Validate extends Lang
      */
     public function isRgbaColor($color)
     {
-        return preg_match('/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3}),? ?(\d{1,3}),? ?$/', $color);
+        return preg_match($this->patterns['rgba'], $color);
     }
 
+    /**
+     * Checks date is dd-mm-yyyy format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isDateDmy($date)
+    {
+        if ($this->value && !preg_match($this->patterns['date_dmy'], $date)){
+            array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$date}");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks date is yyyy-mm-dd format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isDateYmd(string $date)
+    {
+        if ($this->value && !preg_match($this->patterns['date_ymd'], $date)){
+            array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$date}");
+        }
+
+        return $this;
+    }
 
     /**
      * Find uknown user credential type
@@ -187,144 +244,104 @@ class Validate extends Lang
     }
 
     /**
-     * Argument type validator
-     *
-     * @param string $arg : target argument
-     * @param string or array $type: type or types
-     * @return bool
+     * Checks is null the value
+     * @return $this
      */
-    public function validateArg($arg, $types)
+    public function isNull()
     {
-        if (is_array($types)) {
-            $matches = [];
-
-            foreach ($types as $type) {
-                array_push($match, $this->validateArg($arg, $type));
-            }
-
-            foreach ($matches as $match) {
-                if ($match) {
-                    return true;
-                }
-            }
-        } else {
-            switch ($types) {
-                case 'string':return is_string($arg);
-                    break;
-                case 'int':return is_int($arg);
-                    break;
-                case 'numeric':return is_numeric($arg);
-                    break;
-                case 'double':return is_double($arg);
-                    break;
-                case 'float':return is_float($arg);
-                    break;
-                case 'bool':return is_bool($arg);
-                    break;
-                case 'array':return is_array($arg);
-                    break;
-                case 'null':return is_null($arg);
-                    break;
-                case 'empty':return !empty($arg);
-                    break;
-            }
+        if ($this->keyExists && empty($this->value)){
+            array_push($this->errors, "{$this->lang->bg_field_is_null} {$this->key}");
         }
 
-        return false;
+        return $this;
     }
 
     /**
-     * Bulk content/post validation
+     * Type is check
      * 
-     * @param array|stdClass $contents: posted input contents
-     * @param array $requireFields: required field of sended in contents
-     * @return null|array
+     * @param string $type: required value type
+     * @return $this
      */
-    public function validateContents($contents, $requireFields)
+    public function typeIs(string $type)
     {
-        $isJson = $this->isJsonObject($contents);
-
-        // if there is array for contents
-        if ($contents && ($isJson || is_array($contents))) {
-            // if there is array and contains 4 basic item for require fields
-            if ($requireFields && is_array($requireFields) && is_array($requireFields[0])) {
-                /**
-                 * [0] field name
-                 * [1] field null check
-                 * [2] field except type
-                 * [3] field min-max length
-                 * [4] field except values
-                 */
-                foreach ($requireFields as $key => $value) {
-                    $subject = false;
-                    $_value = $value[0];
-
-                    // check and get field is exists in contents
-                    if ($isJson && isset($contents->$_value)) {
-                        $subject = $contents->$_value;
-                    } else if (!$isJson && isset($contents[$value[0]])) {
-                        $subject = $contents[$value[0]];
-                    } else {
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_argument_missing}: {$value[0]}",
-                        ];
-                    }
-
-                    $string_length = strlen($subject);
-
-                    // check field is null
-                    if ($value[1] === true && empty($subject)) {
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_field_is_null}: {$value[0]} ({$_value})",
-                        ];
-                    } // check expected type/s
-                    else if (!$this->validateArg($subject, $value[2])) {
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_invalid_field_value_type}: {$value[2]} ({$_value})",
-                        ];
-                    } // check max length for string and int
-                    else if (isset($value[3]) && $value[3] && ($string_length < $value[3][0] || $string_length > $value[3][1])) {
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_invalid_field_value_length}: {$value[3][0]}-{$value[3][1]} ({$_value})",
-                        ];
-                    } // check expected value for enums
-                    else if (isset($value[4]) && $value[4] && is_array($value[4]) && !in_array($subject, $value[4])) {
-                        $expected_value = count($value[4]) < 10 ? ': ' . implode(', ', $value[4]) : null;
-
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_unexpected_field_value}{$expected_value} ({$_value})",
-                        ];
-                    }
-                }
-            } // if it is true, check all contents with only null control
-            else if ($requireFields === true) {
-                foreach ($contents as $key => $value) {
-                    if (empty($value)) {
-                        return [
-                            'result' => false,
-                            'message' => "{$this->lang->bg_invalid_field_value}: {$key}",
-                        ];
-                    }
-                }
-            } else {
-                return [
-                    'result' => false,
-                    'message' => $this->lang->bg_invalid_content_array
-                ];
-            }
-        } else {
-            return [
-                'result' => false,
-                'message' => $this->lang->bg_invalid_content_array
-            ];
+        if ($this->value && gettype($this->value) != $type){
+            array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type}");
         }
 
-        // default or success result
-        return true;
+        return $this;
+    }
+
+    /**
+     * Checks atleast length string, int and arrays
+     * 
+     * @param int $min: minimum length
+     * @param int $max: maximum length
+     * @return $this
+     */
+    public function length(int $min, int $max)
+    {
+        $length = null;
+
+        if ($this->value && is_string($this->value)){
+            $length = strlen($this->value);
+        }
+        else if ($this->value && is_numeric($this->value)){
+            $length = (int)$this->value;
+        } 
+        else if ($this->value && is_array($this->value)){
+            $length = count($this->value);
+        }
+
+        if ($length && ($length < $min || $length > $max)){
+            array_push($this->errors, "{$this->lang->bg_invalid_value_length} {$min} > && < {$max} ({$this->key})");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks value is in array
+     * 
+     * @param array $array: excepted values
+     * @return $this
+     */
+    public function valueIn(array $array)
+    {
+        if ($this->value && !in_array($this->value, $array)){
+            $exceptedValues = implode(array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
+
+            array_push($this->errors, "{$this->lang->bg_unexpected_value} {$exceptedValues} ({$this->key})");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Required key in data array
+     * 
+     * @param array $data: data block
+     * @param string $key: required key
+     * @return $this
+     */
+    public function require(string $key)
+    {
+        $this->key = $key;
+
+        if (empty($this->data) || is_null($this->data)){
+            $this->dataExists = false;
+            array_push($this->errors, "{$this->lang->bg_mising_arguments}");
+        } else if (!array_key_exists($key, $this->data)){
+            $this->keyExists = false;
+            array_push($this->errors, "{$this->lang->bg_argument_missing} {$this->key}");
+        }
+
+        $this->value = $this->data[$key];
+
+        return $this;
+    }
+
+    public function isSuccess()
+    {
+        return count($this->errors);
     }
 }
