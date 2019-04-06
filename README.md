@@ -37,14 +37,7 @@ pubic function func()
 }
 ```
 
-## Other Validations
-
-### usage
-```PHP
-echo $this->validate->isRgbColor('33,33,33,66') ? 'ok' : 'no';
-```
-
-### List of Validate Functions
+### List of Validation Functions
 
 * isEmail
 * isId

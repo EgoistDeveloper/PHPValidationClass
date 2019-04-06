@@ -311,7 +311,7 @@ class Validate
     public function valueIn(array $array)
     {
         if ($this->keyExists && $this->value && !in_array($this->value, $array)){
-            $exceptedValues = implode(array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
+            $exceptedValues = implode(', ', array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
 
             array_push($this->errors, "{$this->lang->bg_unexpected_value} {$exceptedValues} ({$this->key})");
         }
