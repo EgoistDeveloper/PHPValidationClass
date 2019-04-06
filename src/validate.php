@@ -28,7 +28,7 @@
  * @author     Original Author <hiam@egoist.dev>
  * @copyright  2018 EgoistDeveloper
  * @license    MIT
- * @version    0.2
+ * @version    0.3
  * @link       https://github.com/EgoistDeveloper/PHPValidationClass
  */
 
@@ -39,6 +39,7 @@ class Validate
     public $data = [];
     public $key = null;
     public $value = null;
+    public $require = true;
 
     public $dataExists = true;
     public $keyExists = true;
@@ -153,7 +154,7 @@ class Validate
         }
 
         json_decode($json);
-        
+
         if ($this->value && json_last_error() != JSON_ERROR_NONE){
             array_push($this->errors, "{$this->lang->bg_invalid_json_string} {$this->key}");
         }
@@ -264,8 +265,8 @@ class Validate
      */
     public function typeIs(string $type)
     {
-        if ($this->value && gettype($this->value) != $type){
-            array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type}");
+        if ($this->keyExists && $this->value && gettype($this->value) != $type){
+            array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type} ({$this->key})");
         }
 
         return $this;
@@ -280,20 +281,22 @@ class Validate
      */
     public function length(int $min, int $max)
     {
-        $length = null;
+        if ($this->keyExists){
+            $length = null;
 
-        if ($this->value && is_string($this->value)){
-            $length = strlen($this->value);
-        }
-        else if ($this->value && is_numeric($this->value)){
-            $length = (int)$this->value;
-        } 
-        else if ($this->value && is_array($this->value)){
-            $length = count($this->value);
-        }
+            if ($this->value && is_string($this->value)){
+                $length = strlen($this->value);
+            }
+            else if ($this->value && is_numeric($this->value)){
+                $length = (int)$this->value;
+            } 
+            else if ($this->value && is_array($this->value)){
+                $length = count($this->value);
+            }
 
-        if ($length && ($length < $min || $length > $max)){
-            array_push($this->errors, "{$this->lang->bg_invalid_value_length} {$min} > && < {$max} ({$this->key})");
+            if ($length && ($length < $min || $length > $max)){
+                array_push($this->errors, "{$this->lang->bg_invalid_value_length} {$min} > && < {$max} ({$this->key})");
+            }
         }
 
         return $this;
@@ -307,7 +310,7 @@ class Validate
      */
     public function valueIn(array $array)
     {
-        if ($this->value && !in_array($this->value, $array)){
+        if ($this->keyExists && $this->value && !in_array($this->value, $array)){
             $exceptedValues = implode(array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
 
             array_push($this->errors, "{$this->lang->bg_unexpected_value} {$exceptedValues} ({$this->key})");
@@ -325,7 +328,8 @@ class Validate
      */
     public function require(string $key)
     {
-        $this->key = $key;
+        $this->require = true;
+        $this->key = isset($this->lang->$key) ? $this->lang->$key : $key;
 
         if (empty($this->data) || is_null($this->data)){
             $this->dataExists = false;
@@ -333,15 +337,50 @@ class Validate
         } else if (!array_key_exists($key, $this->data)){
             $this->keyExists = false;
             array_push($this->errors, "{$this->lang->bg_argument_missing} {$this->key}");
+        } else {
+            $this->value = $this->data[$key];
         }
-
-        $this->value = $this->data[$key];
 
         return $this;
     }
 
+    /**
+     * Not required but if exists will be check
+     * 
+     * @param array $data: data block
+     * @param string $key: required key
+     * @return $this
+     */
+    public function notRequire(string $key)
+    {
+        $this->require = false;
+        $this->key = isset($this->lang->$key) ? $this->lang->$key : $key;
+
+        if (empty($this->data) || is_null($this->data)){
+            $this->dataExists = false;
+            array_push($this->errors, "{$this->lang->bg_mising_arguments}");
+        } else if (!array_key_exists($key, $this->data)){
+            $this->keyExists = false;
+        } else {
+            $this->value = $this->data[$key];
+        }
+
+        return $this;
+    }
+
+    /**
+     * Clear some data for next checks
+     */
+    public function check()
+    {
+        $this->key = null;
+        $this->value = null;
+        $this->require = true;
+        $this->keyExists = true;
+    }
+
     public function isSuccess()
     {
-        return count($this->errors);
+        return !count($this->errors);
     }
 }
