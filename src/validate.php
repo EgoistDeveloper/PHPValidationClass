@@ -46,11 +46,16 @@ class Validate
 
     public $patterns = [
         'url' => '/^(http|https)?:\/\/[a-zA-Z0-9-\.]+\.[a-z]{2,4}/',
-        'date_dmy' => '/[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{4}/',
-        'date_ymd' => '/[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}/',
+        'date_dmy' => '/^[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{4}$/',
+        'date_ymd' => '/^[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}$/',
+        'date_dmy_slash' => '/^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/',
+        'date_ymd_slash' => '/^[0-9]{4}\/[0-9]{1,2}\/[0-9]{1,2}$/',
+        'time_hi' => '/^[0-9]{2}:[0-9]{2}$/',
+        'time_his' => '/^[0-9]{2}:[0-9]{2}:[0-9]{2}$/',
         'rgba' => '/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3}),? ?(\d{1,3}),? ?$/',
         'rgb' => '/^((\d{1,3}), ?)((\d{1,3}), ?)(\d{1,3})$/',
-        'hex_color' => '/^#?([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})?$/'
+        'hex_color' => '/^#?([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})([a-fA-F-0-9]{1,2})?$/',
+        'domain' => '/^(?!:\/\/)([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]{2,11}?$/'
     ];
 
     /**
@@ -75,7 +80,7 @@ class Validate
      */
     public function isId($id, $idMaxLength = 11)
     {
-        if (!preg_match("/^[0-9]{1,{$idMaxLength}}$/", $id)){
+        if (!preg_match("/^[0-9]{1,{$idMaxLength}}$/", $id)) {
             array_push($this->errors, "{$this->lang->bg_invalid_id_value} {$id}");
         }
 
@@ -117,13 +122,27 @@ class Validate
      * @param string $urlPattern: custom pattern
      * @return bool
      */
-    public function isUrl($url, $urlPattern = null)
+    public function isUrl($pattern = null, $native = false, $return = false)
     {
-        if ($urlPattern){
-            return preg_match($this->patterns['url'], $url);
+        if ($return) {
+            if ($pattern && $this->value && preg_match($pattern, $this->value)) {
+                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            } else if ($native === false && $this->value && !preg_match($this->patterns['url'], $this->value)) {
+                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            } else if (!filter_var($this->value, FILTER_VALIDATE_URL)) {
+                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            }
         }
 
-        return filter_var($url, FILTER_VALIDATE_URL);
+        if ($pattern && $this->value && preg_match($pattern, $this->value)) {
+            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+        } else if ($native === false && $this->value && !preg_match($this->patterns['url'], $this->value)) {
+            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+        } else if (!filter_var($this->value, FILTER_VALIDATE_URL)) {
+            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+        }
+
+        return $this;
     }
 
     /**
@@ -134,7 +153,7 @@ class Validate
      */
     public function isJsonObject($object)
     {
-        if ($object === null){
+        if ($object === null) {
             return false;
         }
 
@@ -149,13 +168,13 @@ class Validate
      */
     public function isJson($json)
     {
-        if (!is_string($json)){
+        if (!is_string($json)) {
             return false;
         }
 
         json_decode($json);
 
-        if ($this->value && json_last_error() != JSON_ERROR_NONE){
+        if ($this->value && json_last_error() != JSON_ERROR_NONE) {
             array_push($this->errors, "{$this->lang->bg_invalid_json_string} {$this->key}");
         }
 
@@ -195,16 +214,22 @@ class Validate
         return preg_match($this->patterns['rgba'], $color);
     }
 
+    /******************************* DATE / TIME START ***********************************/
+
     /**
      * Checks date is dd-mm-yyyy format
      * 
      * @param string $date: date as string
      * @return $this
      */
-    public function isDateDmy($date)
+    public function isDateDmy(string $date = null, $return = false)
     {
-        if ($this->value && !preg_match($this->patterns['date_dmy'], $date)){
-            array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$date}");
+        if ($return) {
+            return preg_match($this->patterns['date_dmy'], $date);
+        } else {
+            if ($this->value && !preg_match($this->patterns['date_dmy'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$this->value}");
+            }
         }
 
         return $this;
@@ -216,10 +241,112 @@ class Validate
      * @param string $date: date as string
      * @return $this
      */
-    public function isDateYmd(string $date)
+    public function isDateYmd(string $date = null, $return = false)
     {
-        if ($this->value && !preg_match($this->patterns['date_ymd'], $date)){
-            array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$date}");
+        if ($return) {
+            return preg_match($this->patterns['date_ymd'], $date);
+        } else {
+            if ($this->value && !preg_match($this->patterns['date_ymd'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks date is dd-mm-yyyy format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isDateDmyWithSlash(string $date = null, $return = false)
+    {
+        if ($return) {
+            return preg_match($this->patterns['date_dmy_slash'], $date);
+        } else {
+            if ($this->value && !preg_match($this->patterns['date_dmy_slash'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$this->value}");
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks date is yyyy-mm-dd format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isDateYmdWidthSlash(string $date = null, $return = false)
+    {
+        if ($return) {
+            return preg_match($this->patterns['date_ymd_slash'], $date);
+        } else {
+            if ($this->value && !preg_match($this->patterns['date_ymd_slash'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks date is yyyy-mm-dd format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isTimeHi(string $time = null, $return = false)
+    {
+        if ($return) {
+            return preg_match($this->patterns['time_hi'], $time);
+        } else {
+            if ($this->value && !preg_match($this->patterns['time_hi'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Checks date is yyyy-mm-dd format
+     * 
+     * @param string $date: date as string
+     * @return $this
+     */
+    public function isTimeHis(string $time = null, $return = false)
+    {
+        if ($return) {
+            return preg_match($this->patterns['time_his'], $time);
+        } else {
+            if ($this->value && !preg_match($this->patterns['time_his'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+            }
+        }
+
+        return $this;
+    }
+
+    /******************************* DATE / TIME END ***********************************/
+
+    /**
+     * Checks is domain
+     */
+    public function isDomain($return = false)
+    {
+        if ($return) {
+            if ($this->value && !preg_match($this->patterns['domain'], $this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_domain} ({$this->key})");
+            }
+
+            return false;
+        }
+
+        if ($this->value && !preg_match($this->patterns['domain'], $this->value)) {
+            array_push($this->errors, "{$this->lang->bg_invalid_domain} {$this->key}");
         }
 
         return $this;
@@ -250,7 +377,7 @@ class Validate
      */
     public function isNull()
     {
-        if ($this->keyExists && empty($this->value)){
+        if ($this->keyExists && empty($this->value)) {
             array_push($this->errors, "{$this->lang->bg_field_is_null} {$this->key}");
         }
 
@@ -263,10 +390,26 @@ class Validate
      * @param string $type: required value type
      * @return $this
      */
-    public function typeIs(string $type)
+    public function typeIs(string $type, $return = false)
     {
-        if ($this->keyExists && $this->value && gettype($this->value) != $type){
-            array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type} ({$this->key})");
+        if ($return) {
+            if ($this->keyExists && $this->value) {
+                if ($type != 'numeric' && gettype($this->value) != $type) {
+                    return false;
+                } else if ($type == 'numeric' && !is_numeric($this->value)) {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        if ($this->keyExists && $this->value) {
+            if ($type != 'numeric' && gettype($this->value) != $type) {
+                array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type} ({$this->key})");
+            } else if ($type == 'numeric' && !is_numeric($this->value)) {
+                array_push($this->errors, "{$this->lang->bg_invalid_value_type} numeric ({$this->key})");
+            }
         }
 
         return $this;
@@ -281,20 +424,18 @@ class Validate
      */
     public function length(int $min, int $max)
     {
-        if ($this->keyExists){
+        if ($this->keyExists) {
             $length = null;
 
-            if ($this->value && is_string($this->value)){
+            if ($this->value && is_string($this->value)) {
                 $length = strlen($this->value);
-            }
-            else if ($this->value && is_numeric($this->value)){
+            } else if ($this->value && is_numeric($this->value)) {
                 $length = (int)$this->value;
-            } 
-            else if ($this->value && is_array($this->value)){
+            } else if ($this->value && is_array($this->value)) {
                 $length = count($this->value);
             }
 
-            if ($length && ($length < $min || $length > $max)){
+            if ($length && ($length < $min || $length > $max)) {
                 array_push($this->errors, "{$this->lang->bg_invalid_value_length} {$min} > && < {$max} ({$this->key})");
             }
         }
@@ -310,7 +451,7 @@ class Validate
      */
     public function valueIn(array $array)
     {
-        if ($this->keyExists && $this->value && !in_array($this->value, $array)){
+        if ($this->keyExists && $this->value && !in_array($this->value, $array)) {
             $exceptedValues = implode(', ', array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
 
             array_push($this->errors, "{$this->lang->bg_unexpected_value} {$exceptedValues} ({$this->key})");
@@ -331,10 +472,10 @@ class Validate
         $this->require = true;
         $this->key = isset($this->lang->$key) ? $this->lang->$key : $key;
 
-        if (empty($this->data) || is_null($this->data)){
+        if (empty($this->data) || is_null($this->data)) {
             $this->dataExists = false;
             array_push($this->errors, "{$this->lang->bg_mising_arguments}");
-        } else if (!array_key_exists($key, $this->data)){
+        } else if (!array_key_exists($key, $this->data)) {
             $this->keyExists = false;
             array_push($this->errors, "{$this->lang->bg_argument_missing} {$this->key}");
         } else {
@@ -356,14 +497,32 @@ class Validate
         $this->require = false;
         $this->key = isset($this->lang->$key) ? $this->lang->$key : $key;
 
-        if (empty($this->data) || is_null($this->data)){
+        if (empty($this->data) || is_null($this->data)) {
             $this->dataExists = false;
             array_push($this->errors, "{$this->lang->bg_mising_arguments}");
-        } else if (!array_key_exists($key, $this->data)){
+        } else if (!array_key_exists($key, $this->data)) {
             $this->keyExists = false;
         } else {
             $this->value = $this->data[$key];
         }
+
+        return $this;
+    }
+
+    public function emojisLen($emojis)
+    {
+        return $emojis ? count(preg_split('~\X{1}\K~u', $emojis)) - 1 : 0;
+    }
+
+    /**
+     * Set single value for single validations
+     * 
+     * @param mixed $value
+     * @return $this
+     */
+    public function value($value)
+    {
+        $this->value = $value;
 
         return $this;
     }
