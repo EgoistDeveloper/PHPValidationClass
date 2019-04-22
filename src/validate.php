@@ -28,7 +28,7 @@
  * @author     Original Author <hiam@egoist.dev>
  * @copyright  2018 EgoistDeveloper
  * @license    MIT
- * @version    0.3
+ * @version    0.5
  * @link       https://github.com/EgoistDeveloper/PHPValidationClass
  */
 
@@ -377,8 +377,10 @@ class Validate
      */
     public function isNull()
     {
-        if ($this->keyExists && empty($this->value)) {
-            array_push($this->errors, "{$this->lang->bg_field_is_null} {$this->key}");
+        if (!is_numeric($this->value) && !is_bool($this->value)){
+            if ($this->keyExists && empty($this->value)) {
+                array_push($this->errors, "{$this->lang->bg_field_is_null} {$this->key}");
+            }
         }
 
         return $this;
