@@ -46,6 +46,8 @@ class Validate
 
     public $patterns = [
         'url' => '/^(http|https)?:\/\/[a-zA-Z0-9-\.]+\.[a-z]{2,4}/',
+        'username' => '/^[0-9A-Za-z]{4, 30}$/',
+        'password' => '/^((?=.{2,}[A-Z])(?=.{2,}[a-z])(?=.{2,}[0-9])(?=.{2,}[\w\s])).{6,128}$/',
         'date_dmy' => '/^[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{4}$/',
         'date_ymd' => '/^[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}$/',
         'date_dmy_slash' => '/^[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}$/',
@@ -59,29 +61,30 @@ class Validate
     ];
 
     /**
-     * Email validation with native function
-     *
-     * @param string $email users' email address
-     * @return bool
+     * Returns emojis character lenght
+     * @param $emojiarray_push($this->errors, "{$this->lang->}")s
+     * @return int
      */
-    public function isEmail($email)
+    public function emojisLen($emojis)
     {
-        $this->errors = filter_var($email, FILTER_VALIDATE_EMAIL); // ###
+        return count(preg_split('~\X{1}\K~u', $emojis)) - 1;
 
         return $this;
     }
 
     /**
-     * Numeric ID validation
-     * 
-     * @param int|string $id
-     * @param int $idMaxLength
+     * Email validation with native function
+     *
+     * @param string $email users' email address
+     * @param bool $return: direct return
      * @return bool
      */
-    public function isId($id, $idMaxLength = 11)
+    public function isEmail($email = null, $return = false)
     {
-        if (!preg_match("/^[0-9]{1,{$idMaxLength}}$/", $id)) {
-            array_push($this->errors, "{$this->lang->bg_invalid_id_value} {$id}");
+        if ($return){
+            return filter_var($email, FILTER_VALIDATE_EMAIL);
+        } else if (!filter_var($this->value, FILTER_VALIDATE_EMAIL)){
+            array_push($this->errors, "{$this->lang->validate_invalid_email_address}: {$this->value}");
         }
 
         return $this;
@@ -91,28 +94,36 @@ class Validate
      * Username validation
      *
      * @param string $username: selected username
-     * @param string $usernamePattern: custom pattern
-     * @param int $usernameMinLength
-     * @param int $usernameMaxLength
+     * @param bool $return: direct return
      * @return bool
      */
-    public function isUsername($username, $usernamePattern = '[0-9A-Za-z]', $usernameMinLength = 3, $usernameMaxLength = 30)
+    public function isUsername($username = null, $return = false)
     {
-        return preg_match("/^{$usernamePattern}{{$usernameMinLength},{$usernameMaxLength}}$/", $username);
+        if ($return){
+            return preg_match($this->patterns['username'], $username);
+        } else if ($this->value && !preg_match($this->patterns['username'], $this->value)){
+            array_push($this->errors, "{$this->lang->validate_invalid_username}: {$this->value}");
+        }
+
+        return $this;
     }
 
     /**
      * User password validation
      *
      * @param string $password selected password
-     * @param string $passwordPattern: custom pattern
-     * @param int $usernameMinLength
-     * @param int $usernameMaxLength
+     * @param bool $return: direct return
      * @return bool
      */
-    public function isPassword($password, $passwordPattern = '(?=.{2,}[A-Z])(?=.{2,}[a-z])(?=.{2,}[0-9])(?=.{2,}[\w\s])', $passwordMinLength = 8, $passwordMaxLength = 128)
+    public function isPassword($password = null, $return = false)
     {
-        return preg_match('/^{$passwordPattern}.{{$passwordMinLength},{$passwordMaxLength}}$/', $password);
+        if ($return){
+            return preg_match($this->patterns['password'], $password);
+        } else if ($this->value && !preg_match($this->patterns['password'], $this->value)){
+            array_push($this->errors, "{$this->lang->validate_invalid_password}: {$this->value}");
+        }
+
+        return $this;
     }
 
     /**
@@ -126,20 +137,20 @@ class Validate
     {
         if ($return) {
             if ($pattern && $this->value && preg_match($pattern, $this->value)) {
-                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+                return array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
             } else if ($native === false && $this->value && !preg_match($this->patterns['url'], $this->value)) {
-                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+                return array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
             } else if (!filter_var($this->value, FILTER_VALIDATE_URL)) {
-                return array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+                return array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
             }
         }
 
         if ($pattern && $this->value && preg_match($pattern, $this->value)) {
-            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
         } else if ($native === false && $this->value && !preg_match($this->patterns['url'], $this->value)) {
-            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
         } else if (!filter_var($this->value, FILTER_VALIDATE_URL)) {
-            array_push($this->errors, "{$this->lang->bg_invalid_url} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_invalid_url} {$this->key}");
         }
 
         return $this;
@@ -175,7 +186,7 @@ class Validate
         json_decode($json);
 
         if ($this->value && json_last_error() != JSON_ERROR_NONE) {
-            array_push($this->errors, "{$this->lang->bg_invalid_json_string} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_invalid_json_string} {$this->key}");
         }
 
         return $this;
@@ -187,9 +198,15 @@ class Validate
      * @param string|int $color
      * @return bool
      */
-    public function isHexColor($color)
+    public function isHexColor($color = null, $return = false)
     {
-        return preg_match($this->patterns['hex_color'], $color);
+        if ($return){
+            return preg_match($this->patterns['hex_color'], $color);
+        } else if($this->value && !preg_match($this->patterns['hex_color'], $this->value)) {
+            array_push($this->errors, "{$this->lang->validate_invalid_hex_color} {$this->key}");
+        }
+
+        return $this;
     }
 
     /**
@@ -198,9 +215,15 @@ class Validate
      * @param string|int $color
      * @return bool
      */
-    public function isRgbColor($color)
+    public function isRgbColor($color = null, $return = false)
     {
-        return preg_match($this->patterns['rgb'], $color);
+        if ($return){
+            return preg_match($this->patterns['rgb'], $color);
+        } else if($this->value && !preg_match($this->patterns['rgb'], $this->value)) {
+            array_push($this->errors, "{$this->lang->validate_invalid_rgb_color} {$this->key}");
+        }
+
+        return $this;
     }
 
     /**
@@ -209,9 +232,15 @@ class Validate
      * @param string|int $color
      * @return bool
      */
-    public function isRgbaColor($color)
+    public function isRgbaColor($color = null, $return = false)
     {
-        return preg_match($this->patterns['rgba'], $color);
+        if ($return){
+            return preg_match($this->patterns['rgba'], $color);
+        } else if ($this->value && !preg_match($this->patterns['rgba'], $this->value)){
+            array_push($this->errors, "{$this->lang->validate_invalid_rgba_color} {$this->key}");
+        }
+
+        return $this;
     }
 
     /******************************* DATE / TIME START ***********************************/
@@ -228,7 +257,7 @@ class Validate
             return preg_match($this->patterns['date_dmy'], $date);
         } else {
             if ($this->value && !preg_match($this->patterns['date_dmy'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_dmy_value} {$this->value}");
             }
         }
 
@@ -247,7 +276,7 @@ class Validate
             return preg_match($this->patterns['date_ymd'], $date);
         } else {
             if ($this->value && !preg_match($this->patterns['date_ymd'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_ymd_value} {$this->value}");
             }
         }
 
@@ -266,7 +295,7 @@ class Validate
             return preg_match($this->patterns['date_dmy_slash'], $date);
         } else {
             if ($this->value && !preg_match($this->patterns['date_dmy_slash'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_dmy_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_dmy_value} {$this->value}");
             }
         }
 
@@ -285,7 +314,7 @@ class Validate
             return preg_match($this->patterns['date_ymd_slash'], $date);
         } else {
             if ($this->value && !preg_match($this->patterns['date_ymd_slash'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_ymd_value} {$this->value}");
             }
         }
 
@@ -304,7 +333,7 @@ class Validate
             return preg_match($this->patterns['time_hi'], $time);
         } else {
             if ($this->value && !preg_match($this->patterns['time_hi'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_ymd_value} {$this->value}");
             }
         }
 
@@ -323,7 +352,7 @@ class Validate
             return preg_match($this->patterns['time_his'], $time);
         } else {
             if ($this->value && !preg_match($this->patterns['time_his'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_date_ymd_value} {$this->value}");
+                array_push($this->errors, "{$this->lang->validate_invalid_date_ymd_value} {$this->value}");
             }
         }
 
@@ -339,36 +368,17 @@ class Validate
     {
         if ($return) {
             if ($this->value && !preg_match($this->patterns['domain'], $this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_domain} ({$this->key})");
+                array_push($this->errors, "{$this->lang->validate_invalid_domain} ({$this->key})");
             }
 
             return false;
         }
 
         if ($this->value && !preg_match($this->patterns['domain'], $this->value)) {
-            array_push($this->errors, "{$this->lang->bg_invalid_domain} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_invalid_domain} {$this->key}");
         }
 
         return $this;
-    }
-
-    /**
-     * Find uknown user credential type
-     * 
-     * @param string $credential: user credential
-     * @return bool|string
-     */
-    public function findUserCredentialType($credential)
-    {
-        if ($this->isEmail($credential)) {
-            return 'email';
-        } else if ($this->isUsername($credential)) {
-            return 'username';
-        } else if ($this->isId($credential)) {
-            return 'id';
-        }
-
-        return false;
     }
 
     /**
@@ -379,7 +389,7 @@ class Validate
     {
         if (!is_numeric($this->value) && !is_bool($this->value)){
             if ($this->keyExists && empty($this->value)) {
-                array_push($this->errors, "{$this->lang->bg_field_is_null} {$this->key}");
+                array_push($this->errors, "{$this->lang->validate_field_is_null} {$this->key}");
             }
         }
 
@@ -408,9 +418,9 @@ class Validate
 
         if ($this->keyExists && $this->value) {
             if ($type != 'numeric' && gettype($this->value) != $type) {
-                array_push($this->errors, "{$this->lang->bg_invalid_value_type} {$type} ({$this->key})");
+                array_push($this->errors, "{$this->lang->validate_invalid_value_type} {$type} ({$this->key})");
             } else if ($type == 'numeric' && !is_numeric($this->value)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_value_type} numeric ({$this->key})");
+                array_push($this->errors, "{$this->lang->validate_invalid_value_type_numeric} ({$this->key})");
             }
         }
 
@@ -438,7 +448,7 @@ class Validate
             }
 
             if ($length && ($length < $min || $length > $max)) {
-                array_push($this->errors, "{$this->lang->bg_invalid_value_length} {$min} > && < {$max} ({$this->key})");
+                array_push($this->errors, "{$this->lang->validate_invalid_value_length} {$min} > && < {$max} ({$this->key})");
             }
         }
 
@@ -456,7 +466,7 @@ class Validate
         if ($this->keyExists && $this->value && !in_array($this->value, $array)) {
             $exceptedValues = implode(', ', array_slice($array, 0, 9)) . (count($array) > 10 ? '...' : null);
 
-            array_push($this->errors, "{$this->lang->bg_unexpected_value} {$exceptedValues} ({$this->key})");
+            array_push($this->errors, "{$this->lang->validate_unexpected_value} {$exceptedValues} ({$this->key})");
         }
 
         return $this;
@@ -476,10 +486,10 @@ class Validate
 
         if (empty($this->data) || is_null($this->data)) {
             $this->dataExists = false;
-            array_push($this->errors, "{$this->lang->bg_mising_arguments}");
+            array_push($this->errors, "{$this->lang->validate_mising_arguments}");
         } else if (!array_key_exists($key, $this->data)) {
             $this->keyExists = false;
-            array_push($this->errors, "{$this->lang->bg_argument_missing} {$this->key}");
+            array_push($this->errors, "{$this->lang->validate_argument_missing} {$this->key}");
         } else {
             $this->value = $this->data[$key];
         }
@@ -501,7 +511,7 @@ class Validate
 
         if (empty($this->data) || is_null($this->data)) {
             $this->dataExists = false;
-            array_push($this->errors, "{$this->lang->bg_mising_arguments}");
+            array_push($this->errors, "{$this->lang->validate_mising_arguments}");
         } else if (!array_key_exists($key, $this->data)) {
             $this->keyExists = false;
         } else {
@@ -509,11 +519,6 @@ class Validate
         }
 
         return $this;
-    }
-
-    public function emojisLen($emojis)
-    {
-        return $emojis ? count(preg_split('~\X{1}\K~u', $emojis)) - 1 : 0;
     }
 
     /**

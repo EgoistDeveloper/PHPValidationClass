@@ -39,8 +39,8 @@ pubic function func()
 
 ### List of Validation Functions
 
+* emojisLen
 * isEmail
-* isId
 * isUsername
 * isPassword
 * isUrl
@@ -49,10 +49,14 @@ pubic function func()
 * isHexColor
 * isRgbColor
 * isRgbaColor
-* findUserCredentialType
 * isDateDmy
 * isDateYmd
+* isDateDmyWithSlash
+* isDateYmdWidthSlash
+* isTimeHi
+* isTimeHis
+* isDomain
 * isNull
 * typeIs
 * length
-* valueIn
+* value
